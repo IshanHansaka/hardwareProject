@@ -12,6 +12,8 @@ const char* directions[4] = {"LEFT", "UP", "RIGHT", "DOWN"}; // Corresponding di
 
 int receivedInt = -1; // Initialize received integer to an invalid value
 
+#define buzzer  4
+
 void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, password);
@@ -42,11 +44,13 @@ void loop() {
     int sensorValue = digitalRead(sensorPins[i]);
     if (sensorValue == HIGH) {
       sensorStates[i] = true;
+      tone(buzzer, 650 + (i * 100));
       Serial.print("Sensor ");
       Serial.print(i);
       Serial.println(" activated.");
     } else {
-      if (sensorStates[i] && sensorValue == LOW) {
+      if (sensorStates[i]) {
+        noTone(buzzer);
         sensorStates[i] = false;
         Serial.println(directions[i]);
         
@@ -67,4 +71,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     Serial.print("Received integer: ");
     Serial.println(receivedInt);
   }
+}
+
+void playBuzzer(int x) {
+  tone(buzzer, 650 + (x * 100));
+  delay(300);
+  noTone(buzzer);
 }
