@@ -13,6 +13,7 @@ const char* directions[4] = {"LEFT", "UP", "RIGHT", "DOWN"}; // Corresponding di
 int receivedInt = -1; // Initialize received integer to an invalid value
 
 #define buzzer  4
+#define ledPin  2
 
 void setup() {
   Serial.begin(115200);
@@ -22,6 +23,9 @@ void setup() {
   for (int i = 0; i < 4; i++) {
     pinMode(sensorPins[i], INPUT);
   }
+
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -70,6 +74,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     receivedInt = atoi((char*)payload);
     Serial.print("Received integer: ");
     Serial.println(receivedInt);
+  } else if (type == WStype_CONNECTED) {
+    digitalWrite(ledPin, HIGH);  // Turn on LED when WebSocket is connected
+    Serial.println("WebSocket connected");
+  } else if (type == WStype_DISCONNECTED) {
+    digitalWrite(ledPin, LOW);  // Turn off LED when WebSocket is disconnected
+    Serial.println("WebSocket disconnected");
   }
 }
 
