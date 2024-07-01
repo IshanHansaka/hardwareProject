@@ -33,15 +33,40 @@ void firebaseInit() {
   Firebase.reconnectWiFi(true);
 }
 
+String getFormattedDate() {
+  time_t now;
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return "";
+  }
+  char buffer[11];
+  strftime(buffer, sizeof(buffer), "%Y-%m-%d", &timeinfo);
+  return String(buffer);
+}
+
+String getFormattedTime() {
+  time_t now;
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return "";
+  }
+  char buffer[9];
+  strftime(buffer, sizeof(buffer), "%H:%M:%S", &timeinfo);
+  return String(buffer);
+}
+
 void firestoreDataUpdate() {
   if (WiFi.status() == WL_CONNECTED && Firebase.ready()) {
-    String documentPath = "testData/staticNumber";
+    String collectionPath = "time";
 
     FirebaseJson content;
-    content.set("fields/number/integerValue", 42);
+    content.set("fields/date/stringValue", getFormattedDate());
+    content.set("fields/time/stringValue", getFormattedTime());
 
-    if (Firebase.Firestore.patchDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), content.raw(), "number")) {
-      Serial.printf("ok\n%s\n\n", fbdo.payload().c_str());
+    if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, "", collectionPath.c_str(), content.raw())) {
+      Serial.printf("Document created: %s\n\n", fbdo.payload().c_str());
     } else {
       Serial.println(fbdo.errorReason());
     }
@@ -56,6 +81,7 @@ void setup() {
     Serial.println("Connecting to WiFi..");
   }
   Serial.println("Connected to the WiFi network");
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Configure time service
   firebaseInit();
 }
 
