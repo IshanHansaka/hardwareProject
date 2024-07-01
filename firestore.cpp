@@ -31,7 +31,6 @@ void setup() {
 
   // Configure Firebase
   config.api_key = FIREBASE_API_KEY;
-  config.database_url = FIREBASE_DATABASE_URL;
 
   // Initialize Firebase
   Firebase.begin(&config, &auth);
@@ -45,7 +44,7 @@ void setup() {
     Serial.println(fbdo.errorReason());
   }
 
-  // Initialize time
+  // Initialize time (optional)
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   if (!getLocalTime(nullptr)) {
     Serial.println("Failed to obtain time");
@@ -54,10 +53,7 @@ void setup() {
 }
 
 void loop() {
-  // Create a new document with a unique ID in a collection called "data"
-  String path = "data/" + String(millis());  // Using millis() as a unique ID
-
-  // Get the current date and time (adjust format as needed)
+  // Get current date and time
   char dateString[20];
   char timeString[20];
   struct tm timeinfo;
@@ -66,21 +62,26 @@ void loop() {
     return;
   }
 
+  // Format date and time strings
   strftime(dateString, sizeof(dateString), "%Y-%m-%d", &timeinfo);
   strftime(timeString, sizeof(timeString), "%H:%M:%S", &timeinfo);
 
-  // Create a JSON object to store data
+  // Create Firestore paths
+  String collectionPath = "/time";  // Replace with your collection path
+  String documentPath = collectionPath + "/" + dateString + "-" + timeString;  // Unique document path based on date and time
+
+  // Prepare JSON data to be stored in Firestore
   FirebaseJson json;
   json.set("date", dateString);
   json.set("time", timeString);
 
-  // Set data within the newly created document
-  if (Firebase.RTDB.setJSON(&fbdo, path.c_str(), &json)) {
-    Serial.println("Data written successfully to the document");
+  // Set data within the Firestore document
+  if (Firebase.Firestore.setDocument(&fbdo, documentPath.c_str(), &json)) {
+    Serial.println("Data written successfully to Firestore");
   } else {
     Serial.print("Error writing data: ");
     Serial.println(fbdo.errorReason());
   }
 
-  delay(5000); // Adjust delay for how often you want to create documents
+  delay(60000); // Wait 1 minute before writing the next document
 }
