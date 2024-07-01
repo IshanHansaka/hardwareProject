@@ -1,5 +1,5 @@
 #include <WiFi.h>
-#include <Firebase_ESP_Client.h>
+#include <FirebaseClient.h>
 #include <time.h>
 
 // Replace with your network credentials
@@ -7,14 +7,11 @@ const char* WIFI_SSID = "Dialog 4G 370";
 const char* WIFI_PASSWORD = "Fc5814ED";
 
 // Replace with your Firebase project credentials
-#define FIREBASE_PROJECT_ID "first-year-hardware-project"
-#define FIREBASE_DATABASE_URL "https://first-year-hardware-project.firebaseio.com"
-#define FIREBASE_API_KEY "AIzaSyAxgTKliDO4MNop_gZEH_led3kpI2MlfBs"
+const char* FIREBASE_HOST = "first-year-hardware-project.firebaseio.com";
+const char* FIREBASE_AUTH = "AIzaSyAxgTKliDO4MNop_gZEH_led3kpI2MlfBs";
 
-// Define Firebase Data objects
+// Define Firebase Data object
 FirebaseData fbdo;
-FirebaseAuth auth;
-FirebaseConfig config;
 
 void setup() {
   Serial.begin(115200);
@@ -29,20 +26,15 @@ void setup() {
   }
   Serial.println(" Connected!");
 
-  // Configure Firebase
-  config.api_key = FIREBASE_API_KEY;
-
   // Initialize Firebase
-  Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true);
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
 
-  // Optional: Check connection status
-  if (Firebase.ready()) {
-    Serial.println("Firebase connection successful");
-  } else {
-    Serial.print("Firebase connection error: ");
-    Serial.println(fbdo.errorReason());
+  // Wait until connected to Firebase
+  while (!Firebase.ready()) {
+    delay(500);
+    Serial.print(".");
   }
+  Serial.println("Firebase connection successful");
 
   // Initialize time (optional)
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
@@ -66,9 +58,8 @@ void loop() {
   strftime(dateString, sizeof(dateString), "%Y-%m-%d", &timeinfo);
   strftime(timeString, sizeof(timeString), "%H:%M:%S", &timeinfo);
 
-  // Create Firestore paths
-  String collectionPath = "/time";  // Replace with your collection path
-  String documentPath = collectionPath + "/" + dateString + "-" + timeString;  // Unique document path based on date and time
+  // Create Firestore path
+  String path = "/time/" + String(dateString) + "/" + String(timeString);
 
   // Prepare JSON data to be stored in Firestore
   FirebaseJson json;
@@ -76,7 +67,7 @@ void loop() {
   json.set("time", timeString);
 
   // Set data within the Firestore document
-  if (Firebase.Firestore.setDocument(&fbdo, documentPath.c_str(), &json)) {
+  if (Firebase.setJSON(fbdo, path.c_str(), json)) {
     Serial.println("Data written successfully to Firestore");
   } else {
     Serial.print("Error writing data: ");
