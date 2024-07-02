@@ -10,7 +10,7 @@ const int sensorPins[4] = {13, 14, 12, 18}; // Pins for touch sensors
 boolean sensorStates[4] = {false, false, false, false}; // Array of sensor states
 const char* directions[4] = {"LEFT", "UP", "RIGHT", "DOWN"}; // Corresponding directions
 
-#define buzzer  4
+#define buzzer  2
 
 int receivedInt = -1; // Initialize received integer to an invalid value
 
