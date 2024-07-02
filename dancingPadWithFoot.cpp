@@ -48,7 +48,7 @@ void loop() {
     } else {
       if (sensorStates[i] && sensorValue == LOW) {
         sensorStates[i] = false;      
-        if (receivedInt == i) {
+        if (receivedInt == i && receivedInt != -1) {
           playBuzzer(i+1);
           webSocket.sendTXT(0, "0"); // Send response "0" to React app
         }
@@ -62,6 +62,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     receivedInt = atoi((char*)payload);
     Serial.print("Received integer: ");
     Serial.println(receivedInt);
+  } else if (type == WStype_DISCONNECTED) {
+    receivedInt = -1;
   }
 }
 
