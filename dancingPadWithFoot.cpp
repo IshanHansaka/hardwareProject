@@ -10,6 +10,8 @@ const int sensorPins[4] = {13, 14, 12, 18}; // Pins for touch sensors
 boolean sensorStates[4] = {false, false, false, false}; // Array of sensor states
 const char* directions[4] = {"LEFT", "UP", "RIGHT", "DOWN"}; // Corresponding directions
 
+#define buzzer  4
+
 int receivedInt = -1; // Initialize received integer to an invalid value
 
 void setup() {
@@ -41,12 +43,14 @@ void loop() {
   for (int i = 0; i < 4; i++) {
     int sensorValue = digitalRead(sensorPins[i]);
     if (sensorValue == HIGH) {
+      tone(buzzer, 650 + (i * 100));
       sensorStates[i] = true;
       Serial.print("Sensor ");
       Serial.print(i);
       Serial.println(" activated.");
     } else {
       if (sensorStates[i] && sensorValue == LOW) {
+        noTone(buzzer);
         sensorStates[i] = false;
         Serial.println(directions[i]);
         
