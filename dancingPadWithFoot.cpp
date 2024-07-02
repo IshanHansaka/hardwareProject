@@ -8,7 +8,6 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 
 const int sensorPins[4] = {13, 14, 12, 18}; // Pins for touch sensors
 boolean sensorStates[4] = {false, false, false, false}; // Array of sensor states
-const char* directions[4] = {"LEFT", "UP", "RIGHT", "DOWN"}; // Corresponding directions
 
 #define buzzer  2
 
@@ -45,22 +44,13 @@ void loop() {
   for (int i = 0; i < 4; i++) {
     int sensorValue = digitalRead(sensorPins[i]);
     if (sensorValue == HIGH) {
-      tone(buzzer, 650 + (i * 100));
       sensorStates[i] = true;
-      Serial.print("Sensor ");
-      Serial.print(i);
-      Serial.println(" activated.");
     } else {
       if (sensorStates[i] && sensorValue == LOW) {
-        noTone(buzzer);
-        sensorStates[i] = false;
-        Serial.println(directions[i]);
-        
+        sensorStates[i] = false;      
         if (receivedInt == i) {
-          Serial.println("Correct tile activated.");
+          playBuzzer(i+1);
           webSocket.sendTXT(0, "0"); // Send response "0" to React app
-        } else {
-          Serial.println("Incorrect tile activated. Waiting for correct tile.");
         }
       }
     }
@@ -73,4 +63,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     Serial.print("Received integer: ");
     Serial.println(receivedInt);
   }
+}
+
+void playBuzzer(int x) {
+  tone(buzzer, 650 + (x * 100));
+  delay(300);
+  noTone(buzzer);
 }
