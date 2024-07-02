@@ -23,6 +23,8 @@ void setup() {
     pinMode(sensorPins[i], INPUT);
   }
 
+  pinMode(buzzer, OUTPUT);
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi...");
