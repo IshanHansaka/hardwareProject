@@ -131,6 +131,7 @@ void setup() {
 
   //Time
   configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Configure time service
+
   randomSeed(analogRead(0));  // Seed the random number generator
 
   // Initialize LCD
@@ -239,7 +240,6 @@ void stopSystem() {
   lcd.print("Session is over");
   delay(2000); // Delay before resetting
   lcd.clear();
-  
 }
 
 void stopGame() {
@@ -289,7 +289,8 @@ void game1() {
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("Start");
-        } else if (!digitalRead(failpin)) {
+        } 
+        else if (!digitalRead(failpin)) {
           gamestate = FAILED;
           lcd.clear();
           lcd.setCursor(0, 0);
