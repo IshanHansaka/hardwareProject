@@ -7,19 +7,33 @@
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
 
-LiquidCrystal_I2C lcd(0x27, 16, 4);  // Address 0x27, 16 columns, 4 rows
-
 //Firebase
 #define API_KEY "AIzaSyAxgTKliDO4MNop_gZEH_led3kpI2MlfBs"
 #define FIREBASE_PROJECT_ID "first-year-hardware-project"
 #define USER_EMAIL "your_email@example.com"
 #define USER_PASSWORD "your_password"
 #define DATABASE_URL "https://first-year-hardware-project.firebaseio.com"
+#define RDATABASE_URL "https://first-year-hardware-project-default-rtdb.asia-southeast1.firebasedatabase.app/"
+
+//LD2410
+#define MONITOR_SERIAL Serial
+#define RADAR_SERIAL Serial1
+#define RADAR_RX_PIN 16
+#define RADAR_TX_PIN 17
+#define LED_PIN 27 
+
+//Memory game
+#define levelsInGame 50
+#define buzzer  23
+
+
+LiquidCrystal_I2C lcd(0x27, 16, 4);  // Address 0x27, 16 columns, 4 rows
 
 // Initialize Firebase data object
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
+bool signupOK = false;
 
 //WebSockets
 WebSocketsServer webSocket = WebSocketsServer(81);
@@ -30,9 +44,10 @@ const char* password = "Fc5814ED";
 const int startpin = 32;
 const int failpin = 4;
 const int endpin = 33;
-
 enum GameState { FAILED, IN_PROGRESS, SUCCESS };
 GameState gamestate = FAILED;
+unsigned long startTime = 0; // Variable to store the start time
+unsigned long highScore = ULONG_MAX; // Variable to store the high score time
 
 // Choose Game
 enum GameMode { Buz, Memory, non };
@@ -41,82 +56,47 @@ GameMode gamemode = non;
 // Memory Game
 int buttons[4] = {12, 13, 14, 15};
 int leds[4]    = {25, 26, 18, 19};
-
 boolean button[4] = {0, 0, 0, 0};
-
-#define levelsInGame 50
-#define buzzer  23
-
 int bt_memoryGame[100];
 int led_memoryGame[100];
-
 boolean lost = false;
 int game_play, level, stage;
 
-//-------------------------------------------------------------------
 // LD2410
 ld2410 radar;
 uint32_t lastReading = 0;
 bool radarConnected = false;
 
-#define MONITOR_SERIAL Serial
-#define RADAR_SERIAL Serial1
-#define RADAR_RX_PIN 16
-#define RADAR_TX_PIN 17
-#define LED_PIN 27  // Define the pin for the LED
-
 unsigned long presenceStartTime = 0;
 unsigned long gameStartTime = 0;
 bool gameActive = false;
-const unsigned long presenceDuration = 2000; // 5 seconds in milliseconds
-const unsigned long gameDuration = 2000; // 20 seconds in milliseconds
+const unsigned long presenceDuration = 5000; // 5 seconds in milliseconds
+const unsigned long gameDuration = 30000; // 20 seconds in milliseconds
 unsigned long lastHumanDetectionTime = 0;
 const unsigned long detectionGracePeriod = 2000; // 2 seconds in milliseconds
 
 int sessions = 0; //count of sesions (Websockets)
-
 int numDetections = 0; // Counter for human presence detections
+unsigned long memoryHighScore = ULONG_MAX;
+int i = 1;
+
 
 //------------------------------------------------------------------
 void setup() {
+  //Buzzer
+  pinMode(buzzer, OUTPUT);
+
+  //BuzzGame
   pinMode(startpin, INPUT_PULLUP);
   pinMode(failpin, INPUT_PULLUP);
   pinMode(endpin, INPUT_PULLUP);
-  pinMode(buzzer, OUTPUT);
-
-  //WiFi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-
-  Serial.println("Connected to WiFi");
-  Serial.print("ESP32 IP Address: ");
-  Serial.println(WiFi.localIP());  // Print the IP address
-
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
-
-  //FireBase
-  firebaseInit();
-
-  //Time
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Configure time service
-
-  // Initialize LCD
-  lcd.init();
-  lcd.backlight();
-
-  // Initialize button and LED pins
+  
+  //Memory Game  (Initialize button and LED pins)
   for (int i = 0; i < 4; i++) {
     pinMode(buttons[i], INPUT_PULLUP);
     pinMode(leds[i], OUTPUT);
   }
-  
-  randomSeed(analogRead(0));  // Seed the random number generator
 
-  //----------------------------------------------------------------------
   // LD2410
   MONITOR_SERIAL.begin(115200);
   RADAR_SERIAL.begin(256000, SERIAL_8N1, RADAR_RX_PIN, RADAR_TX_PIN);
@@ -134,6 +114,31 @@ void setup() {
     MONITOR_SERIAL.println(F("not connected"));
   }
 
+  //WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+  Serial.print("ESP32 IP Address: ");
+  Serial.println(WiFi.localIP());  // Print the IP address
+
+  //Websockets
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+
+  //FireBase
+  firebaseInit();
+  rfirebase();
+
+  //Time
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Configure time service
+  randomSeed(analogRead(0));  // Seed the random number generator
+
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Wait...!");
@@ -168,7 +173,7 @@ void loop() {
             gameStartTime = millis(); // Set the game start time
 
             numDetections++; // Increment detection counter
-            firestoreDataUpdate();
+            
             
 
             // Stop detecting after three detections
@@ -227,6 +232,11 @@ void loop() {
 }
 
 void stopSystem() {
+  if(i == 1){
+    numDetections--;
+    firestoreDataUpdate();
+    i++;
+  }
   gameActive = false;
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -243,9 +253,16 @@ void stopGame() {
   lcd.setCursor(0, 0);
   lcd.print("Time is OVER!");
   delay(500); // Wait for 2 seconds before restarting presence check
-   lcd.clear();
+  lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Wait...!");
+  if(level - 1 > memoryHighScore){
+      memoryHighScore = level - 1;
+      updateMemoryHighScore(memoryHighScore);
+    }
+  level = 1;
+  stage = 0;
+  lost = false;
   presenceStartTime = 0; // Reset presence check after game time is over
 }
 
@@ -259,6 +276,12 @@ void game1() {
       case IN_PROGRESS:
         if (!digitalRead(endpin)) {
           gamestate = SUCCESS;
+          unsigned long endTime = millis();
+          unsigned long elapsedTime = endTime - startTime;
+          if (elapsedTime < highScore) {
+          highScore = elapsedTime;
+          updateBuzzwireHighScore(highScore); // Update the high score in Firebase
+          }
           lcd.clear();
           lcd.setCursor(0, 0);
           playBuzzer(4);
@@ -290,6 +313,7 @@ void game1() {
       case SUCCESS:
         if (!digitalRead(startpin)) {
           gamestate = IN_PROGRESS;
+          startTime = millis(); // Record the start time
           lcd.clear();
           lcd.setCursor(0, 0);
           tone(buzzer, 150);
@@ -404,6 +428,10 @@ void game2() {
         for (int i = 0; i < 4; i++) {
           digitalWrite(leds[i], LOW);
         }
+        if(level - 1 > memoryHighScore){
+          memoryHighScore = level - 1;
+          updateMemoryHighScore(memoryHighScore);
+        }
         level = 1;
         stage = 0;
         lost = false;
@@ -452,6 +480,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
   }
 }
 
+
 //FireBase
 void FirestoreTokenStatusCallback(TokenInfo info) {
   Serial.printf("Token Info: type = %s, status = %s\n", getTokenType(info), getTokenStatus(info));
@@ -465,6 +494,42 @@ void firebaseInit() {
   config.token_status_callback = FirestoreTokenStatusCallback;
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
+}
+
+void rfirebase(){
+  config.host = RDATABASE_URL;
+  config.api_key = API_KEY;
+   /* Sign up */
+  if (Firebase.signUp(&config, &auth, "", "")){
+    Serial.println("ok");
+    signupOK = true;
+  }
+  else{
+    Serial.printf("%s\n", config.signer.signupError.message.c_str());
+  }
+  config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
+  //initialize
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+  // Retrieve the current high score
+  if (Firebase.RTDB.getInt(&fbdo, "highScore/buzzwire")) {
+    if (fbdo.dataType() == "int") {
+      highScore = fbdo.intData();
+      Serial.println("Current high score: " + String(highScore) + " ms");
+    }
+  } else {
+    Serial.print("Failed to get high score: ");
+    Serial.println(fbdo.errorReason());
+  }
+   if (Firebase.RTDB.getInt(&fbdo, "highScore/memory")) {
+    if (fbdo.dataType() == "int") {
+      memoryHighScore = fbdo.intData();
+      Serial.println("Current high score: " + String(memoryHighScore));
+    }
+  } else {
+    Serial.print("Failed to get high score: ");
+    Serial.println(fbdo.errorReason());
+  }
 }
 
 void firestoreDataUpdate() {
@@ -483,7 +548,28 @@ void firestoreDataUpdate() {
   }
 }
 
-//Get Time & Date 
+void updateBuzzwireHighScore(unsigned long newHighScore) {
+  Firebase.RTDB.setInt(&fbdo, "highScore/buzzwire", newHighScore);
+  if (fbdo.dataType() == "null") {
+    Serial.print("Failed to update high score: ");
+    Serial.println(fbdo.errorReason());
+  } else {
+    Serial.println("Updated high score to: " + String(newHighScore) + " ms");
+  }
+}
+
+void updateMemoryHighScore(unsigned long memoryNewHighScore) {
+  Firebase.RTDB.setInt(&fbdo, "highScore/memory", memoryNewHighScore);
+  if (fbdo.dataType() == "null") {
+    Serial.print("Failed to update high score: ");
+    Serial.println(fbdo.errorReason());
+  } else {
+    Serial.println("Updated high score to: " + String(memoryNewHighScore) + " ms");
+  }
+}
+
+
+//Get Date
 String getFormattedDate() {
   time_t now;
   struct tm timeinfo;
