@@ -26,7 +26,6 @@
 #define levelsInGame 50
 #define buzzer  23
 
-
 LiquidCrystal_I2C lcd(0x27, 16, 4);  // Address 0x27, 16 columns, 4 rows
 
 // Initialize Firebase data object
@@ -80,8 +79,6 @@ int numDetections = 0; // Counter for human presence detections
 unsigned long memoryHighScore = ULONG_MAX;
 int i = 1;
 
-
-//------------------------------------------------------------------
 void setup() {
   //Buzzer
   pinMode(buzzer, OUTPUT);
@@ -149,7 +146,7 @@ void loop() {
 
   if(sessions != 0){
     if(numDetections <= sessions){
-    radar.read();
+      radar.read();
 
       if (radarConnected) {
         bool humanDetected = false;
@@ -167,14 +164,13 @@ void loop() {
 
           if (presenceStartTime == 0) {
             presenceStartTime = millis();
-          } else if (millis() - presenceStartTime >= presenceDuration) { // Detected for presenceDuration
+          } 
+          else if (millis() - presenceStartTime >= presenceDuration) { // Detected for presenceDuration
             gameActive = true;
             presenceStartTime = 0; // Reset the presence start time
             gameStartTime = millis(); // Set the game start time
 
             numDetections++; // Increment detection counter
-            
-            
 
             // Stop detecting after three detections
             if (numDetections > sessions) {
@@ -480,7 +476,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
   }
 }
 
-
 //FireBase
 void FirestoreTokenStatusCallback(TokenInfo info) {
   Serial.printf("Token Info: type = %s, status = %s\n", getTokenType(info), getTokenStatus(info));
@@ -567,7 +562,6 @@ void updateMemoryHighScore(unsigned long memoryNewHighScore) {
     Serial.println("Updated high score to: " + String(memoryNewHighScore) + " ms");
   }
 }
-
 
 //Get Date
 String getFormattedDate() {
