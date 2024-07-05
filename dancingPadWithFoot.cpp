@@ -9,7 +9,7 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 const int sensorPins[4] = {13, 14, 12, 18}; // Pins for touch sensors
 boolean sensorStates[4] = {false, false, false, false}; // Array of sensor states
 
-#define buzzer  2
+#define buzzer 4
 
 int receivedInt = -1; // Initialize received integer to an invalid value
 
