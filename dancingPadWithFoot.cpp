@@ -49,7 +49,7 @@ void loop() {
       if (sensorStates[i] && sensorValue == LOW) {
         sensorStates[i] = false;      
         if (receivedInt == i && receivedInt != -1) {
-          playBuzzer(i+1);
+          playBuzzer(i);
           webSocket.sendTXT(0, "0"); // Send response "0" to React app
         }
       }
