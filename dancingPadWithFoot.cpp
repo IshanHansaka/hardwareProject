@@ -10,6 +10,7 @@ const int sensorPins[4] = {13, 14, 12, 18}; // Pins for touch sensors
 boolean sensorStates[4] = {false, false, false, false}; // Array of sensor states
 
 #define buzzer 4
+#define ledPin 2 // Define LED pin
 
 int receivedInt = -1; // Initialize received integer to an invalid value
 
@@ -23,6 +24,7 @@ void setup() {
   }
 
   pinMode(buzzer, OUTPUT);
+  pinMode(ledPin, OUTPUT); // Set LED pin as output
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -47,7 +49,7 @@ void loop() {
       sensorStates[i] = true;
     } else {
       if (sensorStates[i] && sensorValue == LOW) {
-        sensorStates[i] = false;      
+        sensorStates[i] = false;
         if (receivedInt == i && receivedInt != -1) {
           playBuzzer(i);
           webSocket.sendTXT(0, "0"); // Send response "0" to React app
@@ -64,6 +66,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     Serial.println(receivedInt);
   } else if (type == WStype_DISCONNECTED) {
     receivedInt = -1;
+    digitalWrite(ledPin, LOW); // Turn off LED when disconnected
+  } else if (type == WStype_CONNECTED) {
+    digitalWrite(ledPin, HIGH); // Turn on LED when connected
   }
 }
 
